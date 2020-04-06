@@ -5,7 +5,7 @@
  * LICENSE.txt within the associated archive or repository).
  */
 
-#include "P3.h"
+#include "P6.h"
 
 void main_P3() {
   while( 1 ) {
