@@ -17,7 +17,7 @@ extern uint32_t tos_P;
 // Addressing the main_functions of user processes
 extern void     main_P1();
 extern void     main_P2();
-
+extern void     main_P6();
 
 
 // Dispatch function for process switching
@@ -72,7 +72,7 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    * - enabling IRQ interrupts.
    */
 
-  TIMER0->Timer1Load  = 0x00100000; // select period = 2^20 ticks ~= 1 sec
+  TIMER0->Timer1Load  = 0x01000000; // select period = 2^20 ticks ~= 1 sec
   TIMER0->Timer1Ctrl  = 0x00000002; // select 32-bit   timer
   TIMER0->Timer1Ctrl |= 0x00000040; // select periodic timer
   TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
@@ -118,6 +118,14 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 1 ].ctx.pc   = ( uint32_t )( &main_P2 );
    procTab[ 1 ].ctx.sp   = procTab[ 0 ].tos;
 
+   memset( &procTab[ 2 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
+   procTab[ 2 ].pid      = 3;
+   procTab[ 2 ].status   = STATUS_READY;
+   procTab[ 2 ].tos      = ( uint32_t )( &tos_P + 1*0x00001000);
+   procTab[ 2 ].ctx.cpsr = 0x50;
+   procTab[ 2 ].ctx.pc   = ( uint32_t )( &main_P6 );
+   procTab[ 2 ].ctx.sp   = procTab[ 0 ].tos;
+
   //  memset( &procTab[ 2 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
   //  procTab[ 2 ].pid      = 3;
   //  procTab[ 2 ].status   = STATUS_READY;
@@ -145,10 +153,63 @@ void hilevel_handler_irq( ctx_t* ctx, uint32_t svid ) {
   //         Interrupt now just calls schedule with ctx
   if( id == GIC_SOURCE_TIMER0 ) {
 
+    
+    switch( svid ) {
+      case 0x01 : { // 0x01 => write( fd, x, n )
+        int   fd = ( int   )( ctx->gpr[ 0 ] );
+        char*  x = ( char* )( ctx->gpr[ 1 ] );
+        int    n = ( int   )( ctx->gpr[ 2 ] );
+
+        for( int i = 0; i < n; i++ ) {
+          PL011_putc( UART0, *x++, true );
+        }
+        
+        ctx->gpr[ 0 ] = n;
+        break;
+        }
+
+  default   : { // 0x?? => unknown/unsupported
+    break;
+  }
+  
+
+  }
+  // If in P1, ctx switch to P6 
+if     ( executing->pid == procTab[ 0 ].pid ) {
+    dispatch( ctx, &procTab[ 0 ], &procTab[ 2 ] );  // context switch P_1 -> P_2
+
+    procTab[ 0 ].status = STATUS_READY;             // update   execution status  of P_1
+    procTab[ 2 ].status = STATUS_EXECUTING;         // update   execution status  of P_2
+  } // If in P2, ctx switch to P6
+  else if( executing->pid == procTab[ 1 ].pid ) {
+    dispatch( ctx, &procTab[ 1 ], &procTab[ 2 ] );  // context switch P_2 -> P_1
+
+    procTab[ 1 ].status = STATUS_READY;             // update   execution status  of P_2
+    procTab[ 2 ].status = STATUS_EXECUTING;         // update   execution status  of P_1
+  } // If in P6, ctx switch to P1
+  else if( executing->pid == procTab[ 2 ].pid ) {
+    dispatch( ctx, &procTab[ 2 ], &procTab[ 0 ] );  // context switch P_2 -> P_1
+
+    procTab[ 2 ].status = STATUS_READY;             // update   execution status  of P_2
+    procTab[ 0 ].status = STATUS_EXECUTING;         // update   execution status  of P_1
+  }
+  
+TIMER0->Timer1IntClr = 0x01;
+}
+
+  // Step 5: write the interrupt identifier to signal we're done.
+
+  GICC0->EOIR = id;
+
+  return;
+}
+
+void c( ctx_t* ctx, uint32_t svid ) {
     PL011_putc( UART0, 'T', true );TIMER0->Timer1IntClr = 0x01;
     switch( svid ) {
-      case 0x00 : { // 0x00 => yield()
+      case 0x00 : { //0x01 => yield();
         schedule( ctx );
+
 
         break;
         }
@@ -170,19 +231,6 @@ void hilevel_handler_irq( ctx_t* ctx, uint32_t svid ) {
     break;
   }
   
-
   }
-schedule( ctx );
-TIMER0->Timer1IntClr = 0x01;
-}
-
-  // Step 5: write the interrupt identifier to signal we're done.
-
-  GICC0->EOIR = id;
-
-  return;
-}
-
-void hilevel_handler_svc() {
   return;
 }
