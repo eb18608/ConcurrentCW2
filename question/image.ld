@@ -22,4 +22,7 @@ SECTIONS {
   /* allocate stack for svc mode     */
   .       = . + 0x00001000;  
   tos_svc = .;
+    /* allocate stack for svc mode     */
+  .       = . + 0x00005000;  
+  tos_P = .;
 }

@@ -33,7 +33,7 @@ lolevel_handler_irq: sub   lr, lr, #4              @ correct return address
                      movs  pc, lr                  @ return from interrupt
 
 lolevel_handler_svc: sub   lr, lr, #0              @ correct return address
-                    @ stmfd sp!, { r0-r3, ip, lr }  @ save    caller-save registers
+                     stmfd sp!, { r0-r3, ip, lr }  @ save    caller-save registers
 
                      stmia sp, { r0-r12, sp, lr }^ @ preserve USR registers
                      mrs   r0, spsr                @ move     USR        CPSR
@@ -46,5 +46,5 @@ lolevel_handler_svc: sub   lr, lr, #0              @ correct return address
                      ldmia sp, { r0-r12, sp, lr }^ @ restore  USR mode registers
                      add   sp, sp, #60             @ update   SVC mode SP
 
-                    @ ldmfd sp!, { r0-r3, ip, lr }  @ restore caller-save registers
+                     ldmfd sp!, { r0-r3, ip, lr }  @ restore caller-save registers
                      movs  pc, lr                  @ return from interrupt 
