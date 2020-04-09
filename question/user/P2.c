@@ -7,7 +7,10 @@
 
 #include "P2.h"
 
+
+
 void main_P2() {
+  int prio = 5;
   while( 1 ) {
     write( STDOUT_FILENO, "P2", 2 ); yield();
   }

@@ -7,6 +7,8 @@
 
 #include "P5.h"
 
+
+
 int is_prime( uint32_t x ) {
   if ( !( x & 1 ) || ( x < 2 ) ) {
     return ( x == 2 );
@@ -22,6 +24,7 @@ int is_prime( uint32_t x ) {
 }
 
 void main_P5() {
+  int prio = 3;
   for( int i = 0; i < 25; i++ ) {
     write( STDOUT_FILENO, "P5", 2 );
 

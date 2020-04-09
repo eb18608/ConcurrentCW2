@@ -7,6 +7,7 @@
 
 #include "P3.h"
 
+
 uint32_t weight( uint32_t x ) {
   x = ( x & 0x55555555 ) + ( ( x >>  1 ) & 0x55555555 );
   x = ( x & 0x33333333 ) + ( ( x >>  2 ) & 0x33333333 );
@@ -18,6 +19,7 @@ uint32_t weight( uint32_t x ) {
 }
 
 void main_P3() {
+  int prio = 1;
   while( 1 ) {
     write( STDOUT_FILENO, "P3", 2 );
 

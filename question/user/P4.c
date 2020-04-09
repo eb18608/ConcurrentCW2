@@ -7,6 +7,7 @@
 
 #include "P4.h"
 
+
 uint32_t gcd( uint32_t x, uint32_t y ) {
   if     ( x == y ) {
     return x;
@@ -20,6 +21,7 @@ uint32_t gcd( uint32_t x, uint32_t y ) {
 }
 
 void main_P4() {
+  int prio = 2;
   while( 1 ) {
     write( STDOUT_FILENO, "P4", 2 );
 
