@@ -32,8 +32,6 @@ lolevel_handler_rst: bl    int_init                @ initialise interrupt vector
                      add   sp, sp, #60             @ update   SVC mode SP
                      movs  pc, lr                  @ return from interrupt
 
-                     b     .                       @ halt
-
 lolevel_handler_irq: sub   lr, lr, #4              @ correct return address
                      sub   sp, sp, #60             @ update   SVC mode stack
                      stmia sp, { r0-r12, sp, lr }^ @ preserve USR registers

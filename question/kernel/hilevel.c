@@ -24,9 +24,9 @@ extern void     main_P6();
 
 
 
-// void (*prog[MAX_PROCS])()={
-//   main_P1, main_P2, main_P3, main_P4, main_P5, main_P6
-// };
+void (*prog[MAX_PROCS])()={
+  main_P1, main_P2, main_P3, main_P4, main_P5, main_P6
+};
 
 
 
@@ -61,8 +61,8 @@ void scheduleSVC( ctx_t* ctx  ) {
     if     ( executing->pid == procTab[ 0 ].pid ) {
       dispatch( ctx, &procTab[ 0 ], &procTab[ 1 ] );  // context switch P_1 -> P_2
   
-      procTab[ 1 ].status = STATUS_READY;             // update   execution status  of P_2
-      procTab[ 0 ].status = STATUS_EXECUTING;         // update   execution status  of P_1
+      procTab[ 0 ].status = STATUS_READY;             // update   execution status  of P_2
+      procTab[ 1 ].status = STATUS_EXECUTING;         // update   execution status  of P_1
     }
     else if ( executing->pid == procTab[ 1 ].pid){
       dispatch( ctx, &procTab[ 1 ], &procTab[ 2 ] );  // context switch P_2 -> P_1
@@ -109,7 +109,7 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    * - enabling IRQ interrupts.
    */
 
-  TIMER0->Timer1Load  = 0x00001000; // select period = 2^20 ticks ~= 1 sec
+  TIMER0->Timer1Load  = 0x00100000; // select period = 2^20 ticks ~= 1 sec
   TIMER0->Timer1Ctrl  = 0x00000002; // select 32-bit   timer
   TIMER0->Timer1Ctrl |= 0x00000040; // select periodic timer
   TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
@@ -141,17 +141,6 @@ void hilevel_handler_rst( ctx_t* ctx ) {
 
   // int numProg = sizeof(prog)/ sizeof(prog[0]);
 
-  // for(int i = 0; i < MAX_PROCS; i++ ){
-  //  memset( &procTab[ i ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
-  //  procTab[ i ].pid      = i+1;
-  //  procTab[ i ].status   = STATUS_READY;
-  //  procTab[ i ].tos      = ( uint32_t )( &tos_P + (i*0x0000001000));
-  //  procTab[ i ].ctx.cpsr = 0x50;
-  //  procTab[ i ].ctx.pc   = ( uint32_t )(&prog[i] );
-  //  procTab[ i ].ctx.sp   = procTab[ 0 ].tos;
-  //  procTab[ i ].calls    = 0;
-  // }
-
    memset( &procTab[ 0 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
    procTab[ 0 ].pid      = 1;
    procTab[ 0 ].status   = STATUS_READY;
@@ -168,16 +157,16 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 1 ].tos      = ( uint32_t )( &tos_P + 1*0x00001000);
    procTab[ 1 ].ctx.cpsr = 0x50;
    procTab[ 1 ].ctx.pc   = ( uint32_t )( &main_P2 );
-   procTab[ 1 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 1 ].ctx.sp   = procTab[ 1 ].tos;
    procTab[ 1 ].calls    = 0;
 
    memset( &procTab[ 2 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
    procTab[ 2 ].pid      = 3;
    procTab[ 2 ].status   = STATUS_READY;
-   procTab[ 2 ].tos      = ( uint32_t )( &tos_P + 1*0x00001000);
+   procTab[ 2 ].tos      = ( uint32_t )( &tos_P + 2*0x00001000);
    procTab[ 2 ].ctx.cpsr = 0x50;
    procTab[ 2 ].ctx.pc   = ( uint32_t )( &main_P3 );
-   procTab[ 2 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 2 ].ctx.sp   = procTab[ 2 ].tos;
    procTab[ 2 ].calls    = 0;
 
    memset( &procTab[ 3 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
@@ -186,7 +175,7 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 3 ].tos      = ( uint32_t )( &tos_P + 3*0x00001000 );
    procTab[ 3 ].ctx.cpsr = 0x50;
    procTab[ 3 ].ctx.pc   = ( uint32_t )( &main_P4 );
-   procTab[ 3 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 3 ].ctx.sp   = procTab[ 3 ].tos;
    procTab[ 3 ].calls    = 0;
 
    memset( &procTab[ 4 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
@@ -195,7 +184,7 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 4 ].tos      = ( uint32_t )( &tos_P + 4*0x00001000 );
    procTab[ 4 ].ctx.cpsr = 0x50;
    procTab[ 4 ].ctx.pc   = ( uint32_t )( &main_P5 );
-   procTab[ 4 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 4 ].ctx.sp   = procTab[ 4 ].tos;
    procTab[ 4 ].calls    = 0;
 
    memset( &procTab[ 5 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
@@ -204,7 +193,7 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 5 ].tos      = ( uint32_t )( &tos_P + 5*0x00001000 );
    procTab[ 5 ].ctx.cpsr = 0x50;
    procTab[ 5 ].ctx.pc   = ( uint32_t )( &main_P6 );
-   procTab[ 5 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 5 ].ctx.sp   = procTab[ 5 ].tos;
    procTab[ 5 ].calls    = 0;  
 
   /* Once the PCBs are initialised, we arbitrarily select the 0-th PCB to be

@@ -24,7 +24,7 @@ int is_prime( uint32_t x ) {
 }
 
 void main_P5() {
-  int prio = 3;
+
   for( int i = 0; i < 25; i++ ) {
     write( STDOUT_FILENO, "P5", 2 );
 
