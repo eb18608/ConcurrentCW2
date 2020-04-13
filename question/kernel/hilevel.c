@@ -17,10 +17,19 @@ extern uint32_t tos_P;
 // Addressing the main_functions of user processes
 extern void     main_P1();
 extern void     main_P2();
-// extern void     main_P3();
-// extern void     main_P4();
-// extern void     main_P5();
+extern void     main_P3();
+extern void     main_P4();
+extern void     main_P5();
 extern void     main_P6();
+
+
+
+// void (*prog[MAX_PROCS])()={
+//   main_P1, main_P2, main_P3, main_P4, main_P5, main_P6
+// };
+
+
+
 
 // Dispatch function for process switching
 void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
@@ -47,39 +56,45 @@ void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
   return;
 }
 
-void schedule( ctx_t* ctx , bool interrupt ) {
-  if(!interrupt){                                     // System Call scheduling
-    PL011_putc( UART0, 'F', true );
+
+void scheduleSVC( ctx_t* ctx  ) {
     if     ( executing->pid == procTab[ 0 ].pid ) {
       dispatch( ctx, &procTab[ 0 ], &procTab[ 1 ] );  // context switch P_1 -> P_2
   
-
       procTab[ 1 ].status = STATUS_READY;             // update   execution status  of P_2
       procTab[ 0 ].status = STATUS_EXECUTING;         // update   execution status  of P_1
     }
     else if ( executing->pid == procTab[ 1 ].pid){
-      dispatch( ctx, &procTab[ 1 ], &procTab[ 0 ] );  // context switch P_2 -> P_1
+      dispatch( ctx, &procTab[ 1 ], &procTab[ 2 ] );  // context switch P_2 -> P_1
   
-
       procTab[ 1 ].status = STATUS_READY;             // update   execution status  of P_1
-      procTab[ 0 ].status = STATUS_EXECUTING;         // update   execution status  of P_2
+      procTab[ 2 ].status = STATUS_EXECUTING;         // update   execution status  of P_2
     }
-  }
-  else if (interrupt){                                              // Interrupt call schedule
-      PL011_putc( UART0, 'T', true );  
-      if     ( executing->pid == procTab[ 0 ].pid ) {
-    dispatch( ctx, &procTab[ 0 ], &procTab[ 5 ] );  // context switch P_1 -> P_2
-  
-    procTab[ 0 ].status = STATUS_READY;             // update   execution status  of P_2
-    procTab[ 5 ].status = STATUS_EXECUTING;         // update   execution status  of P_1
-  }
-  else if ( executing->pid == procTab[ 1 ].pid){
-    dispatch( ctx, &procTab[ 1 ], &procTab[ 5 ] );  // context switch P_2 -> P_1
+    else if ( executing->pid == procTab[ 2 ].pid){
+      dispatch( ctx, &procTab[ 2 ], &procTab[ 3 ]);   // context switch P_3 to P_1
 
-    procTab[ 1 ].status = STATUS_READY;             // update   execution status  of P_1
-    procTab[ 5 ].status = STATUS_EXECUTING;         // update   execution status  of P_2
-  }
-  }
+      procTab[ 2 ].status = STATUS_READY;             // update execution status P_3
+      procTab[ 3 ].status = STATUS_EXECUTING;         // update execution status P_1
+    }
+    else if ( executing->pid == procTab[ 3 ].pid){
+      dispatch( ctx, &procTab[ 3 ], &procTab[ 4 ]);   // context switch P_3 to P_1
+
+      procTab[ 3 ].status = STATUS_READY;             // update execution status P_3
+      procTab[ 4 ].status = STATUS_EXECUTING;         // update execution status P_1
+    }
+    else if ( executing->pid == procTab[ 4 ].pid){
+      dispatch( ctx, &procTab[ 4 ], &procTab[ 5 ]);   // context switch P_3 to P_1
+
+      procTab[ 4 ].status = STATUS_READY;             // update execution status P_3
+      procTab[ 5 ].status = STATUS_EXECUTING;         // update execution status P_1
+    }
+    else if ( executing->pid == procTab[ 5 ].pid){
+      dispatch( ctx, &procTab[ 5 ], &procTab[ 0 ]);   // context switch P_3 to P_1
+
+      procTab[ 5 ].status = STATUS_READY;             // update execution status P_3
+      procTab[ 0 ].status = STATUS_EXECUTING;         // update execution status P_1
+    }
+
   return;
 }
 
@@ -124,6 +139,19 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    * - the PC and SP values match the entry point and top of stack.
    */
 
+  // int numProg = sizeof(prog)/ sizeof(prog[0]);
+
+  // for(int i = 0; i < MAX_PROCS; i++ ){
+  //  memset( &procTab[ i ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
+  //  procTab[ i ].pid      = i+1;
+  //  procTab[ i ].status   = STATUS_READY;
+  //  procTab[ i ].tos      = ( uint32_t )( &tos_P + (i*0x0000001000));
+  //  procTab[ i ].ctx.cpsr = 0x50;
+  //  procTab[ i ].ctx.pc   = ( uint32_t )(&prog[i] );
+  //  procTab[ i ].ctx.sp   = procTab[ 0 ].tos;
+  //  procTab[ i ].calls    = 0;
+  // }
+
    memset( &procTab[ 0 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
    procTab[ 0 ].pid      = 1;
    procTab[ 0 ].status   = STATUS_READY;
@@ -131,6 +159,8 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 0 ].ctx.cpsr = 0x50;
    procTab[ 0 ].ctx.pc   = ( uint32_t )( &main_P1 );
    procTab[ 0 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 0 ].calls    = 0;
+
   
    memset( &procTab[ 1 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
    procTab[ 1 ].pid      = 2;
@@ -139,30 +169,34 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 1 ].ctx.cpsr = 0x50;
    procTab[ 1 ].ctx.pc   = ( uint32_t )( &main_P2 );
    procTab[ 1 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 1 ].calls    = 0;
 
-  //  memset( &procTab[ 2 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
-  //  procTab[ 2 ].pid      = 3;
-  //  procTab[ 2 ].status   = STATUS_READY;
-  //  procTab[ 2 ].tos      = ( uint32_t )( &tos_P + 1*0x00001000);
-  //  procTab[ 2 ].ctx.cpsr = 0x50;
-  //  procTab[ 2 ].ctx.pc   = ( uint32_t )( &main_P3 );
-  //  procTab[ 2 ].ctx.sp   = procTab[ 0 ].tos;
+   memset( &procTab[ 2 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
+   procTab[ 2 ].pid      = 3;
+   procTab[ 2 ].status   = STATUS_READY;
+   procTab[ 2 ].tos      = ( uint32_t )( &tos_P + 1*0x00001000);
+   procTab[ 2 ].ctx.cpsr = 0x50;
+   procTab[ 2 ].ctx.pc   = ( uint32_t )( &main_P3 );
+   procTab[ 2 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 2 ].calls    = 0;
 
-  //  memset( &procTab[ 3 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
-  //  procTab[ 3 ].pid      = 4;
-  //  procTab[ 3 ].status   = STATUS_READY;
-  //  procTab[ 3 ].tos      = ( uint32_t )( &tos_P + 3*0x00001000 );
-  //  procTab[ 3 ].ctx.cpsr = 0x50;
-  //  procTab[ 3 ].ctx.pc   = ( uint32_t )( &main_P4 );
-  //  procTab[ 3 ].ctx.sp   = procTab[ 0 ].tos;
+   memset( &procTab[ 3 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
+   procTab[ 3 ].pid      = 4;
+   procTab[ 3 ].status   = STATUS_READY;
+   procTab[ 3 ].tos      = ( uint32_t )( &tos_P + 3*0x00001000 );
+   procTab[ 3 ].ctx.cpsr = 0x50;
+   procTab[ 3 ].ctx.pc   = ( uint32_t )( &main_P4 );
+   procTab[ 3 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 3 ].calls    = 0;
 
-  //  memset( &procTab[ 4 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
-  //  procTab[ 4 ].pid      = 5;
-  //  procTab[ 4 ].status   = STATUS_READY;
-  //  procTab[ 4 ].tos      = ( uint32_t )( &tos_P + 4*0x00001000 );
-  //  procTab[ 4 ].ctx.cpsr = 0x50;
-  //  procTab[ 4 ].ctx.pc   = ( uint32_t )( &main_P5 );
-  //  procTab[ 4 ].ctx.sp   = procTab[ 0 ].tos;
+   memset( &procTab[ 4 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
+   procTab[ 4 ].pid      = 5;
+   procTab[ 4 ].status   = STATUS_READY;
+   procTab[ 4 ].tos      = ( uint32_t )( &tos_P + 4*0x00001000 );
+   procTab[ 4 ].ctx.cpsr = 0x50;
+   procTab[ 4 ].ctx.pc   = ( uint32_t )( &main_P5 );
+   procTab[ 4 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 4 ].calls    = 0;
 
    memset( &procTab[ 5 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
    procTab[ 5 ].pid      = 6;
@@ -171,6 +205,8 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    procTab[ 5 ].ctx.cpsr = 0x50;
    procTab[ 5 ].ctx.pc   = ( uint32_t )( &main_P6 );
    procTab[ 5 ].ctx.sp   = procTab[ 0 ].tos;
+   procTab[ 5 ].calls    = 0;  
+
   /* Once the PCBs are initialised, we arbitrarily select the 0-th PCB to be
    * executed: there is no need to preserve the execution context, since it
    * is invalid on reset (i.e., no process was previously executing).
@@ -183,31 +219,30 @@ void hilevel_handler_rst( ctx_t* ctx ) {
 
 void hilevel_handler_irq( ctx_t* ctx ) {
 
-    // Step 2: read  the interrupt identifier so we know the source.
+  // Step 2: read  the interrupt identifier so we know the source.
   uint32_t id = GICC0->IAR;
   int p = executing->pid;
   bool interrupt = false;
   // Step 4: handle the interrupt, then clear (or reset) the source.
-  //         Interrupt now just calls schedule with ctx
+  //         Interrupt now just calls scheduleSVC
   if( id == GIC_SOURCE_TIMER0 ) {
-    interrupt = true;
-    schedule( ctx, interrupt);
+    scheduleSVC( ctx );
+
     TIMER0->Timer1IntClr = 0x01;
   }
 
   // Step 5: write the interrupt identifier to signal we're done.
 
   GICC0->EOIR = id;
-  PL011_putc( UART0, 'I', true );
+
   return;
 }
 
 void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
-    bool interrupt = false;
     switch( svid ) {
       
       case 0x00 : { //0x01 => yield();
-        schedule( ctx , interrupt);
+        scheduleSVC( ctx );
 
         break;
         }
