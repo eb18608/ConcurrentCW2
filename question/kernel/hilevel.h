@@ -28,7 +28,7 @@
 #include     "int.h"
 
 
-#define MAX_PROCS 6
+#define MAX_PROCS 20
 
 typedef int pid_t;
 typedef int calls_t;

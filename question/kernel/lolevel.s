@@ -18,6 +18,7 @@ lolevel_handler_rst: bl    int_init                @ initialise interrupt vector
 
                      msr   cpsr, #0xD2             @ enter IRQ mode with IRQ and FIQ interrupts disabled
                      ldr   sp, =tos_irq            @ initialise IRQ mode stack
+                     
                      msr   cpsr, #0xD3             @ enter SVC mode with IRQ and FIQ interrupts disabled
                      ldr   sp, =tos_svc            @ initialise SVC mode stack
 
@@ -57,7 +58,6 @@ lolevel_handler_svc: sub   lr, lr, #0              @ correct return address
                      mov   r0, sp                  @ set    high-level C function arg. = SP
                      ldr   r1, [ lr, #-4 ]         @ load                     svc instruction
                      bic   r1, r1, #0xFF000000     @ set    high-level C function arg. = svc immediate
-
                      bl    hilevel_handler_svc     @ invoke high-level C function
 
                      ldmia sp!, { r0, lr }         @ load     USR mode PC and CPSR
