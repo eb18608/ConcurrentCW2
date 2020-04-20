@@ -33,12 +33,15 @@ void gets( char* x, int n ) {
  * one: given a program name from the set of programs statically linked
  * into the kernel image, it returns a pointer to the entry point.
  */
-
-extern void main_P3(); 
+extern void main_P1();
+extern void main_P2();
+extern void main_P3();
 extern void main_P4(); 
 extern void main_P5(); 
 
 void* load( char* x ) {
+
+
   if     ( 0 == strcmp( x, "P3" ) ) {
     return &main_P3;
   }
@@ -47,6 +50,13 @@ void* load( char* x ) {
   }
   else if( 0 == strcmp( x, "P5" ) ) {
     return &main_P5;
+  }
+  else if( 0 == strcmp( x, "P1" ) ){
+
+    return &main_P1;
+  }
+  else if( 0 == strcmp( x, "P2" ) ){
+    return &main_P2;
   }
 
   return NULL;
@@ -90,7 +100,7 @@ void main_console() {
 
     // step 1: write command prompt, then read command.
 
-    puts( "console$ ", 7 ); gets( cmd, MAX_CMD_CHARS );
+    puts( "console$: ", 11 ); gets( cmd, MAX_CMD_CHARS );
 
     // step 2: tokenize command.
 
@@ -104,9 +114,8 @@ void main_console() {
 
     if     ( 0 == strcmp( cmd_argv[ 0 ], "execute"   ) ) {
       void* addr = load( cmd_argv[ 1 ] );
-
       if( addr != NULL ) {
-        if( 0 == fork() ) {
+        if( 0 != fork() ) {
           exec( addr );
         }
       }

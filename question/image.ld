@@ -25,4 +25,6 @@ SECTIONS {
   /* allocate stack for user programs*/
   .       = . + 0x00006000;  
   tos_P = .;
+  .       = . + 0x00005000;  
+  tos_C = .;
 }
