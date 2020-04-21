@@ -9,7 +9,7 @@
 
 // Proc Tab declaration
 pcb_t procTab[ MAX_PROCS ]; pcb_t* executing = NULL;
-
+int child;
 // Memory allocation addressing for processes
 
 // Base address for processses in image.ld
@@ -18,7 +18,7 @@ extern uint32_t tos_C;
 // Addressing the main_functions of user processes
 
 extern void     main_console();
-extern void main_P1();
+
 // Dispatch function for process switching
 void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
 
@@ -32,7 +32,6 @@ void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
     memcpy( ctx, &next->ctx, sizeof( ctx_t ) ); // restore  execution context of P_{next}
     next_pid = '0' + next->pid;
   }
-
     PL011_putc( UART0, '[',      true );
     PL011_putc( UART0, prev_pid, true );
     PL011_putc( UART0, '-',      true );
@@ -92,9 +91,7 @@ void scheduleSVC( ctx_t* ctx  ) {
 
   if(procTab[ currentProgram ].status == STATUS_EXECUTING){
     nextProgram = currentProgram;
-  }else if (procTab[currentProgram].status == STATUS_WAITING){
-    nextProgram = 0;
-  }else
+  }
 
 
   for (int i = 0; i < MAX_PROCS; i++){
@@ -119,9 +116,6 @@ void scheduleSVC( ctx_t* ctx  ) {
     procTab[ currentProgram ].status = currentProgram;            
     procTab[ nextProgram ].status = STATUS_EXECUTING;
   }
-
-
-
 
   return;
 }
@@ -157,19 +151,6 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    *   processor via the IRQ interrupt signal, then
    * - enabling IRQ interrupts.
    */
-
-  //  TIMER0->Timer1Load  = 0x00100000; // select period = 2^20 ticks ~= 1 sec
-  //  TIMER0->Timer1Ctrl  = 0x00000002; // select 32-bit   timer
-  //  TIMER0->Timer1Ctrl |= 0x00000040; // select periodic timer
-  //  TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
-  //  TIMER0->Timer1Ctrl |= 0x00000080; // enable          timer
-
-  //  GICC0->PMR          = 0x000000F0; // unmask all            interrupts
-  //  GICD0->ISENABLER1  |= 0x00000010; // enable timer          interrupt
-  //  GICC0->CTLR         = 0x00000001; // enable GIC interface
-  //  GICD0->CTLR         = 0x00000001; // enable GIC distributor
-
-   //int_enable_irq();
 
   
   /* Automatically execute the user programs P1 and P2 by setting the fields
@@ -236,12 +217,24 @@ void hilevel_handler_rst( ctx_t* ctx ) {
   dispatch( ctx, NULL, &procTab[ 0 ] );
   procTab[ 0 ].status = STATUS_EXECUTING;
 
+   TIMER0->Timer1Load  = 0x00100000; // select period = 2^20 ticks ~= 1 sec
+   TIMER0->Timer1Ctrl  = 0x00000002; // select 32-bit   timer
+   TIMER0->Timer1Ctrl |= 0x00000040; // select periodic timer
+   TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
+   TIMER0->Timer1Ctrl |= 0x00000080; // enable          timer
+
+   GICC0->PMR          = 0x000000F0; // unmask all            interrupts
+   GICD0->ISENABLER1  |= 0x00000010; // enable timer          interrupt
+   GICC0->CTLR         = 0x00000001; // enable GIC interface
+   GICD0->CTLR         = 0x00000001; // enable GIC distributor
+
+   int_enable_irq();
 
   return;
 }
 
 void hilevel_handler_irq( ctx_t* ctx ) {
-  while(executing->pid != procTab[ 0 ].pid){
+
   PL011_putc( UART0, 'I', true );
   // Step 2: read  the interrupt identifier so we know the source.
   uint32_t id = GICC0->IAR;
@@ -258,7 +251,6 @@ void hilevel_handler_irq( ctx_t* ctx ) {
   // Step 5: write the interrupt identifier to signal we're done.
 
   GICC0->EOIR = id;
-  }
   return;
 }
 
@@ -286,51 +278,42 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
         break;
         }
       case 0x03 : {
-        int r = ( int )(ctx->gpr[ 0 ]);
-        if(executing->pid == 0){
-          PL011_putc( UART0, 'I', true );
-          PL011_putc( UART0, 'n', true );
-          PL011_putc( UART0, ' ', true );
-          PL011_putc( UART0, 'C', true );
-          PL011_putc( UART0, 'o', true );
-          PL011_putc( UART0, 'n', true );
-          PL011_putc( UART0, 's', true );
-          PL011_putc( UART0, 'o', true );
-          PL011_putc( UART0, 'l', true );
-          PL011_putc( UART0, 'e', true );
-          r = 0;
-          ctx->gpr[ 0 ] = r;   
-        } else {
-          PL011_putc( UART0, 'N', true );
-          PL011_putc( UART0, 'o', true );
-          PL011_putc( UART0, ' ', true );
-          PL011_putc( UART0, 'C', true );
-          PL011_putc( UART0, 'o', true );
-          PL011_putc( UART0, 'n', true );
-          PL011_putc( UART0, 's', true );
-          PL011_putc( UART0, 'o', true );
-          PL011_putc( UART0, 'l', true );
-          PL011_putc( UART0, 'e', true );
+        PL011_putc(UART0, 'f', true);
+        int   r = ( int   )(  ctx->gpr[ 0 ] ); 
+        if (executing->pid == procTab[ 0 ].pid){            // If console (parent)        
+        int freeIndex;
+        PL011_putc(UART0, 'f', true);
+        PL011_putc(UART0, 'p', true);
+        for (int i = 0; i < MAX_PROCS; i++){
+          if(procTab[ i ].status == STATUS_INVALID){
+            freeIndex = i;
+            break;
+          }
         }
+
+        memset( &procTab[ freeIndex ], 0, sizeof( pcb_t ) ); 
+        procTab[ freeIndex ].pid      = freeIndex;
+        procTab[ freeIndex ].status   = STATUS_READY;
+        procTab[ freeIndex ].tos      = ( uint32_t )( &tos_P + (freeIndex-1)*0x00001000);
+        procTab[ freeIndex ].ctx.pc   = procTab[ 0 ].ctx.pc;
+        procTab[ freeIndex ].ctx.sp   = procTab[ freeIndex ].tos;
+        procTab[ freeIndex ].ctx.cpsr = 0x50;
+        procTab[ freeIndex ].calls    = 0;
+        r = freeIndex;
+
+        
+        }else{                                               // If child (process called)
+          PL011_putc(UART0, 'f', true);
+          PL011_putc(UART0, 'c', true);
+          r = 0;
+        }
+        int print = '0' +r;
+        PL011_putc(UART0, print, true);
+        ctx->gpr[ 0 ] = r;
+
         break;
       }
       case 0x04 : {
-        // if(executing->pid == procTab[ 0 ].pid){
-        //   PL011_putc( UART0, 'C', true );
-        //   PL011_putc( UART0, 'o', true );
-        //   PL011_putc( UART0, 'n', true );
-        //   PL011_putc( UART0, 's', true );
-        //   PL011_putc( UART0, 'o', true );
-        //   PL011_putc( UART0, 'l', true );
-        //   PL011_putc( UART0, 'e', true );
-        //   PL011_putc( UART0, ' ', true );
-        //   PL011_putc( UART0, 'E', true );
-        //   PL011_putc( UART0, 'x', true );
-        //   PL011_putc( UART0, 'i', true );
-        //   PL011_putc( UART0, 't', true );
-        //   executing->status = STATUS_WAITING;
-        //   scheduleSVC( ctx );
-        // }else{
         PL011_putc( UART0, '_', true );
         PL011_putc( UART0, 'E', true );
         PL011_putc( UART0, 'x', true );
@@ -339,34 +322,15 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
         PL011_putc( UART0, '_', true );
         executing->status = STATUS_TERMINATED;
         scheduleSVC( ctx );
-        //}
         break;
       }
       case 0x05 : {
         void* p = ( void* )(ctx->gpr[ 0 ]);        
-        int freeIndex;
-        for (int i = 0; i < MAX_PROCS; i++){
-          if(procTab[ i ].status == STATUS_INVALID){
-            freeIndex = i;
-            break;
-          }
-        }
-        
 
-        memset( &procTab[ freeIndex ], 0, sizeof( pcb_t ) ); // initialise 1-st PCB = P_2
-        procTab[ freeIndex ].pid      = freeIndex;
-        procTab[ freeIndex ].status   = STATUS_READY;
-        procTab[ freeIndex ].tos      = ( uint32_t )( &tos_P + (freeIndex-1)*0x00001000);
-        procTab[ freeIndex ].ctx.cpsr = 0x50;
-        procTab[ freeIndex ].ctx.pc   = ( uint32_t )( p );
-        procTab[ freeIndex ].ctx.sp   = procTab[ freeIndex ].tos;
-        procTab[ freeIndex ].calls    = 0;
-        
-        dispatch( ctx, &procTab[ 0 ], &procTab[ freeIndex ]);
-        procTab[ 0 ].status = STATUS_READY;
-        procTab[ freeIndex ].status = STATUS_EXECUTING;
-        int print = '0' + executing->pid;
-        PL011_putc(UART0, print, true);
+        procTab[ executing->pid ].ctx.pc = ( uint32_t )( p ); 
+        procTab[ executing->pid ].status = STATUS_EXECUTING;
+        // procTab[ executing->pid ].ctx.sp = executing->tos;
+
         break;
       }  
   default   : { // 0x?? => unknown/unsupported
