@@ -115,7 +115,7 @@ void main_console() {
     if     ( 0 == strcmp( cmd_argv[ 0 ], "execute"   ) ) {
       void* addr = load( cmd_argv[ 1 ] );
       if( addr != NULL ) {
-        if( 0 != fork() ) {
+        if( 0 == fork() ) {
           exec( addr );
         }
       }

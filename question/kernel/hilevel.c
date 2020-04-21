@@ -55,6 +55,7 @@ void scheduleSVC( ctx_t* ctx  ) {
   int nextProgram;
   int n = -1;
   bool nextReady = false;
+  bool noPrograms = false;
   status_t curentStatus;
   for(int k = 0; k<MAX_PROCS; k++){
     if(executing->pid == procTab[ k ].pid){
@@ -65,6 +66,7 @@ void scheduleSVC( ctx_t* ctx  ) {
       break;
     }
   }
+
   // int i;
   // i = currentProgram;
   // while (i < MAX_PROCS){
@@ -88,8 +90,13 @@ void scheduleSVC( ctx_t* ctx  ) {
   //   PL011_putc(UART0, 'B', true);
   // }
 
+  if(procTab[ currentProgram ].status == STATUS_EXECUTING){
+    nextProgram = currentProgram;
+  }else if (procTab[currentProgram].status == STATUS_WAITING){
+    nextProgram = 0;
+  }else
 
-  nextProgram = currentProgram;
+
   for (int i = 0; i < MAX_PROCS; i++){
     if((minCalls > procTab[ i ].calls) && (procTab[ i ].status == STATUS_READY)){
       nextProgram = i;
@@ -99,20 +106,22 @@ void scheduleSVC( ctx_t* ctx  ) {
 
 
   if(curentStatus == STATUS_EXECUTING){
-    printNo = '0' + procTab[currentProgram].calls;
-    PL011_putc(UART0, printNo, true);
+    PL011_putc(UART0, 'E', true);
+
     dispatch( ctx, &procTab[ currentProgram ], &procTab[ nextProgram ]);
 
     procTab[ currentProgram ].status = STATUS_READY;            
     procTab[ nextProgram ].status = STATUS_EXECUTING;
   }else{
-    printNo = '0' + procTab[currentProgram].calls;
-    PL011_putc(UART0, printNo, true);
+    PL011_putc(UART0, 'W', true);
     dispatch( ctx, &procTab[ currentProgram ], &procTab[ nextProgram ]);
 
     procTab[ currentProgram ].status = currentProgram;            
     procTab[ nextProgram ].status = STATUS_EXECUTING;
   }
+
+
+
 
   return;
 }
@@ -276,7 +285,52 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
         ctx->gpr[ 0 ] = n;
         break;
         }
+      case 0x03 : {
+        int r = ( int )(ctx->gpr[ 0 ]);
+        if(executing->pid == 0){
+          PL011_putc( UART0, 'I', true );
+          PL011_putc( UART0, 'n', true );
+          PL011_putc( UART0, ' ', true );
+          PL011_putc( UART0, 'C', true );
+          PL011_putc( UART0, 'o', true );
+          PL011_putc( UART0, 'n', true );
+          PL011_putc( UART0, 's', true );
+          PL011_putc( UART0, 'o', true );
+          PL011_putc( UART0, 'l', true );
+          PL011_putc( UART0, 'e', true );
+          r = 0;
+          ctx->gpr[ 0 ] = r;   
+        } else {
+          PL011_putc( UART0, 'N', true );
+          PL011_putc( UART0, 'o', true );
+          PL011_putc( UART0, ' ', true );
+          PL011_putc( UART0, 'C', true );
+          PL011_putc( UART0, 'o', true );
+          PL011_putc( UART0, 'n', true );
+          PL011_putc( UART0, 's', true );
+          PL011_putc( UART0, 'o', true );
+          PL011_putc( UART0, 'l', true );
+          PL011_putc( UART0, 'e', true );
+        }
+        break;
+      }
       case 0x04 : {
+        // if(executing->pid == procTab[ 0 ].pid){
+        //   PL011_putc( UART0, 'C', true );
+        //   PL011_putc( UART0, 'o', true );
+        //   PL011_putc( UART0, 'n', true );
+        //   PL011_putc( UART0, 's', true );
+        //   PL011_putc( UART0, 'o', true );
+        //   PL011_putc( UART0, 'l', true );
+        //   PL011_putc( UART0, 'e', true );
+        //   PL011_putc( UART0, ' ', true );
+        //   PL011_putc( UART0, 'E', true );
+        //   PL011_putc( UART0, 'x', true );
+        //   PL011_putc( UART0, 'i', true );
+        //   PL011_putc( UART0, 't', true );
+        //   executing->status = STATUS_WAITING;
+        //   scheduleSVC( ctx );
+        // }else{
         PL011_putc( UART0, '_', true );
         PL011_putc( UART0, 'E', true );
         PL011_putc( UART0, 'x', true );
@@ -285,7 +339,9 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
         PL011_putc( UART0, '_', true );
         executing->status = STATUS_TERMINATED;
         scheduleSVC( ctx );
-        }
+        //}
+        break;
+      }
       case 0x05 : {
         void* p = ( void* )(ctx->gpr[ 0 ]);        
         int freeIndex;
@@ -302,16 +358,20 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
         procTab[ freeIndex ].status   = STATUS_READY;
         procTab[ freeIndex ].tos      = ( uint32_t )( &tos_P + (freeIndex-1)*0x00001000);
         procTab[ freeIndex ].ctx.cpsr = 0x50;
-        procTab[ freeIndex ].ctx.pc   = ( uint32_t )( &p );
+        procTab[ freeIndex ].ctx.pc   = ( uint32_t )( p );
         procTab[ freeIndex ].ctx.sp   = procTab[ freeIndex ].tos;
         procTab[ freeIndex ].calls    = 0;
         
         dispatch( ctx, &procTab[ 0 ], &procTab[ freeIndex ]);
         procTab[ 0 ].status = STATUS_READY;
         procTab[ freeIndex ].status = STATUS_EXECUTING;
+        int print = '0' + executing->pid;
+        PL011_putc(UART0, print, true);
         break;
       }  
   default   : { // 0x?? => unknown/unsupported
+
+    int print = '0' + svid;
 
     break;
   }
