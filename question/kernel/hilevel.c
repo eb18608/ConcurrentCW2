@@ -9,7 +9,7 @@
 
 // Proc Tab declaration
 pcb_t procTab[ MAX_PROCS ]; pcb_t* executing = NULL;
-int child;
+int programExec;
 // Memory allocation addressing for processes
 
 // Base address for processses in image.ld
@@ -62,9 +62,13 @@ void scheduleSVC( ctx_t* ctx  ) {
       n = k;
       curentStatus = procTab[ k ].status;
       minCalls = procTab[ k ].calls;
+
+
       break;
     }
   }
+      int print = '0' + procTab[ 0 ].calls;
+      PL011_putc(UART0, print, true);
 
   // int i;
   // i = currentProgram;
@@ -95,6 +99,8 @@ void scheduleSVC( ctx_t* ctx  ) {
 
 
   for (int i = 0; i < MAX_PROCS; i++){
+
+    
     if((minCalls > procTab[ i ].calls) && (procTab[ i ].status == STATUS_READY)){
       nextProgram = i;
       minCalls = procTab[ i ].calls;
@@ -244,7 +250,7 @@ void hilevel_handler_irq( ctx_t* ctx ) {
   //         Interrupt now just calls scheduleSVC
   if( id == GIC_SOURCE_TIMER0 ) {
     scheduleSVC( ctx );
-
+    executing->calls++;
     TIMER0->Timer1IntClr = 0x01;
   }
 
@@ -278,12 +284,13 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
         break;
         }
       case 0x03 : {
-        PL011_putc(UART0, 'f', true);
-        int   r = ( int   )(  ctx->gpr[ 0 ] ); 
-        if (executing->pid == procTab[ 0 ].pid){            // If console (parent)        
+        int* r = ( int* )(ctx->gpr[ 0 ]);
+
+   
         int freeIndex;
-        PL011_putc(UART0, 'f', true);
-        PL011_putc(UART0, 'p', true);
+        programExec++;
+        uint32_t offset = executing->tos - ctx->sp;
+
         for (int i = 0; i < MAX_PROCS; i++){
           if(procTab[ i ].status == STATUS_INVALID){
             freeIndex = i;
@@ -291,25 +298,21 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
           }
         }
 
-        memset( &procTab[ freeIndex ], 0, sizeof( pcb_t ) ); 
-        procTab[ freeIndex ].pid      = freeIndex;
+
+        memset( &procTab[ freeIndex ], 0, sizeof( pcb_t ) );
+        memcpy( &procTab[ freeIndex ].ctx, ctx,  sizeof( ctx_t ));
+        memcpy( ( void* )(procTab[ freeIndex ].tos-0x00001000),( void* )(executing->tos - 0x00001000),  0x00001000);
+
+        procTab[ freeIndex ].pid      = programExec;
         procTab[ freeIndex ].status   = STATUS_READY;
-        procTab[ freeIndex ].tos      = ( uint32_t )( &tos_P + (freeIndex-1)*0x00001000);
-        procTab[ freeIndex ].ctx.pc   = procTab[ 0 ].ctx.pc;
-        procTab[ freeIndex ].ctx.sp   = procTab[ freeIndex ].tos;
+        procTab[ freeIndex ].tos      = ( uint32_t )( &tos_P - (freeIndex-1)*0x00001000 );
+        procTab[ freeIndex ].ctx.pc   = ctx->pc;
+        procTab[ freeIndex ].ctx.sp   = procTab[ freeIndex ].tos - offset;
         procTab[ freeIndex ].ctx.cpsr = 0x50;
         procTab[ freeIndex ].calls    = 0;
-        r = freeIndex;
 
-        
-        }else{                                               // If child (process called)
-          PL011_putc(UART0, 'f', true);
-          PL011_putc(UART0, 'c', true);
-          r = 0;
-        }
-        int print = '0' +r;
-        PL011_putc(UART0, print, true);
-        ctx->gpr[ 0 ] = r;
+        ctx->gpr[ 0 ] = procTab[ freeIndex ].pid;
+        procTab[ freeIndex ].ctx.gpr[ 0 ] = 0;
 
         break;
       }
@@ -327,20 +330,18 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
       case 0x05 : {
         void* p = ( void* )(ctx->gpr[ 0 ]);        
 
-        procTab[ executing->pid ].ctx.pc = ( uint32_t )( p ); 
-        procTab[ executing->pid ].status = STATUS_EXECUTING;
-        // procTab[ executing->pid ].ctx.sp = executing->tos;
+        ctx->pc = ( uint32_t )( p ); 
+        executing->status = STATUS_EXECUTING;
+        ctx->sp = executing->tos;
 
         break;
       }  
   default   : { // 0x?? => unknown/unsupported
 
-    int print = '0' + svid;
-
     break;
   }
 
   }
-  executing->calls++;
+
   return;
 }
