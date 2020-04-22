@@ -41,7 +41,7 @@ void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
 
 
     executing = next;                           // update   executing process to P_{next}
-
+    executing->calls++;
   return;
 }
 
@@ -50,8 +50,8 @@ void scheduleSVC( ctx_t* ctx  ) {
   int printNo;
   int printTarget;
   int minCalls;
-  int currentProgram;
-  int nextProgram;
+  int currentProgram = 0;
+  int nextProgram = 0;
   int n = -1;
   bool nextReady = false;
   bool noPrograms = false;
@@ -250,7 +250,7 @@ void hilevel_handler_irq( ctx_t* ctx ) {
   //         Interrupt now just calls scheduleSVC
   if( id == GIC_SOURCE_TIMER0 ) {
     scheduleSVC( ctx );
-    executing->calls++;
+
     TIMER0->Timer1IntClr = 0x01;
   }
 
