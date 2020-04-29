@@ -8,7 +8,8 @@
 #include "hilevel.h"
 
 // Proc Tab declaration
-pcb_t procTab[ MAX_PROCS ]; pcb_t* executing = NULL;
+pcb_t procTab[ MAX_PROCS ];
+pcb_t* executing = NULL;
 int programExec;
 // Memory allocation addressing for processes
 
@@ -67,8 +68,8 @@ void scheduleSVC( ctx_t* ctx  ) {
       break;
     }
   }
-      int print = '0' + procTab[ 0 ].calls;
-      PL011_putc(UART0, print, true);
+      // int print = '0' + procTab[ 0 ].calls;
+      // PL011_putc(UART0, print, true);
 
   // int i;
   // i = currentProgram;
@@ -109,14 +110,14 @@ void scheduleSVC( ctx_t* ctx  ) {
 
 
   if(curentStatus == STATUS_EXECUTING){
-    PL011_putc(UART0, 'E', true);
+    // PL011_putc(UART0, 'E', true);
 
     dispatch( ctx, &procTab[ currentProgram ], &procTab[ nextProgram ]);
 
     procTab[ currentProgram ].status = STATUS_READY;            
     procTab[ nextProgram ].status = STATUS_EXECUTING;
   }else{
-    PL011_putc(UART0, 'W', true);
+    // PL011_putc(UART0, 'W', true);
     dispatch( ctx, &procTab[ currentProgram ], &procTab[ nextProgram ]);
 
     procTab[ currentProgram ].status = currentProgram;            
@@ -166,54 +167,6 @@ void hilevel_handler_rst( ctx_t* ctx ) {
    *   with IRQ interrupts enabled, and
    * - the PC and SP values match the entry point and top of stack.
    */
-
-  // int numProg = sizeof(prog)/ sizeof(prog[0]);
-
-  //  memset( &procTab[ 0 ], 0, sizeof( pcb_t ) ); // initialise 0-th PCB = P_1
-  //  procTab[ 0 ].pid      = 1;
-  //  procTab[ 0 ].status   = STATUS_READY;
-  //  procTab[ 0 ].tos      = ( uint32_t )( &tos_P  );
-  //  procTab[ 0 ].ctx.cpsr = 0x50;
-  //  procTab[ 0 ].ctx.pc   = ( uint32_t )( &main_P1 );
-  //  procTab[ 0 ].ctx.sp   = procTab[ 0 ].tos;
-  //  procTab[ 0 ].calls    = 0;
-
-  
-  //  memset( &procTab[ 1 ], 0, sizeof( pcb_t ) ); // initialise 1-st PCB = P_2
-  //  procTab[ 1 ].pid      = 2;
-  //  procTab[ 1 ].status   = STATUS_READY;
-  //  procTab[ 1 ].tos      = ( uint32_t )( &tos_P + 1*0x00001000);
-  //  procTab[ 1 ].ctx.cpsr = 0x50;
-  //  procTab[ 1 ].ctx.pc   = ( uint32_t )( &main_P2 );
-  //  procTab[ 1 ].ctx.sp   = procTab[ 1 ].tos;
-  //  procTab[ 1 ].calls    = 0;
-
-  //  memset( &procTab[ 2 ], 0, sizeof( pcb_t ) ); // initialise 2-nd PCB = P_3
-  //  procTab[ 2 ].pid      = 3;
-  //  procTab[ 2 ].status   = STATUS_READY;
-  //  procTab[ 2 ].tos      = ( uint32_t )( &tos_P + 2*0x00001000);
-  //  procTab[ 2 ].ctx.cpsr = 0x50;
-  //  procTab[ 2 ].ctx.pc   = ( uint32_t )( &main_P3 );
-  //  procTab[ 2 ].ctx.sp   = procTab[ 2 ].tos;
-  //  procTab[ 2 ].calls    = 0;
-
-  //  memset( &procTab[ 3 ], 0, sizeof( pcb_t ) ); // initialise 3-rd PCB = P_4
-  //  procTab[ 3 ].pid      = 4;
-  //  procTab[ 3 ].status   = STATUS_READY;
-  //  procTab[ 3 ].tos      = ( uint32_t )( &tos_P + 3*0x00001000 );
-  //  procTab[ 3 ].ctx.cpsr = 0x50;
-  //  procTab[ 3 ].ctx.pc   = ( uint32_t )( &main_P4 );
-  //  procTab[ 3 ].ctx.sp   = procTab[ 3 ].tos;
-  //  procTab[ 3 ].calls    = 0;
-
-  //  memset( &procTab[ 4 ], 0, sizeof( pcb_t ) ); // initialise 4-th PCB = P_5
-  //  procTab[ 4 ].pid      = 5;
-  //  procTab[ 4 ].status   = STATUS_READY;
-  //  procTab[ 4 ].tos      = ( uint32_t )( &tos_P + 4*0x00001000 );
-  //  procTab[ 4 ].ctx.cpsr = 0x50;
-  //  procTab[ 4 ].ctx.pc   = ( uint32_t )( &main_P5 );
-  //  procTab[ 4 ].ctx.sp   = procTab[ 4 ].tos;
-  //  procTab[ 4 ].calls    = 0;
 
   /* Once the PCBs are initialised, we arbitrarily select the 0-th PCB to be
    * executed: there is no need to preserve the execution context, since it
@@ -316,7 +269,7 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
 
         break;
       }
-      case 0x04 : {
+      case 0x04 : { //SYS_EXIT
         PL011_putc( UART0, '_', true );
         PL011_putc( UART0, 'E', true );
         PL011_putc( UART0, 'x', true );
@@ -327,7 +280,7 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
         scheduleSVC( ctx );
         break;
       }
-      case 0x05 : {
+      case 0x05 : { //SYS_EXECUTE
         void* p = ( void* )(ctx->gpr[ 0 ]);        
 
         ctx->pc = ( uint32_t )( p ); 
