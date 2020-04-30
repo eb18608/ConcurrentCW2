@@ -68,31 +68,6 @@ void scheduleSVC( ctx_t* ctx  ) {
       break;
     }
   }
-      // int print = '0' + procTab[ 0 ].calls;
-      // PL011_putc(UART0, print, true);
-
-  // int i;
-  // i = currentProgram;
-  // while (i < MAX_PROCS){
-  //   if(executing->pid != procTab[ i ].pid && procTab[ i ].status == STATUS_READY){
-  //     nextProgram = i;
-  //     nextReady = true;
-  //     break;
-  //   }
-  // i++;
-  // }
-  // int j = 0;
-  // while(!nextReady && j < currentProgram){
-  //     if(executing->pid != procTab[ j ].pid && procTab[ j ].status == STATUS_READY){
-  //     nextProgram = j;
-  //     nextReady = true;
-  //     break;
-  //     }
-  //   j++;
-  // }
-  // if(!nextReady){
-  //   PL011_putc(UART0, 'B', true);
-  // }
 
   if(procTab[ currentProgram ].status == STATUS_EXECUTING){
     nextProgram = currentProgram;
@@ -110,14 +85,12 @@ void scheduleSVC( ctx_t* ctx  ) {
 
 
   if(curentStatus == STATUS_EXECUTING){
-    // PL011_putc(UART0, 'E', true);
 
     dispatch( ctx, &procTab[ currentProgram ], &procTab[ nextProgram ]);
 
     procTab[ currentProgram ].status = STATUS_READY;            
     procTab[ nextProgram ].status = STATUS_EXECUTING;
   }else{
-    // PL011_putc(UART0, 'W', true);
     dispatch( ctx, &procTab[ currentProgram ], &procTab[ nextProgram ]);
 
     procTab[ currentProgram ].status = currentProgram;            
@@ -289,6 +262,38 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t svid ) {
 
         break;
       }  
+      case 0x06 : { //SYS_TERMINATE
+        int pid = ctx->gpr[ 0 ];
+        bool found = false;
+        for (int i = 0; i < MAX_PROCS; i++){
+          if(procTab[ i ].pid == pid){
+            procTab[ i ].pid      = -1;
+            procTab[ i ].status   = STATUS_INVALID;
+            procTab[ i ].tos      = 0x00;
+            procTab[ i ].ctx.cpsr = 0x00;
+            procTab[ i ].ctx.pc   = 0x00; 
+            procTab[ i ].ctx.sp   = procTab[ i ].tos;
+            procTab[ i ].calls    = 0;
+            found = true;
+          }
+        }
+        if(!found){
+        PL011_putc( UART0, 'U', true );
+        PL011_putc( UART0, 'n', true );
+        PL011_putc( UART0, 'k', true );
+        PL011_putc( UART0, 'o', true );
+        PL011_putc( UART0, 'w', true );
+        PL011_putc( UART0, 'n', true );
+        PL011_putc( UART0, '_', true );
+        PL011_putc( UART0, 'P', true );
+        PL011_putc( UART0, 'I', true );
+        PL011_putc( UART0, 'D', true );
+        PL011_putc( UART0, '!', true );
+        }
+        
+      break;
+      }
+
   default   : { // 0x?? => unknown/unsupported
 
     break;
